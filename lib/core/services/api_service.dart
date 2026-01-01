@@ -1,12 +1,11 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
+import '../config/api_config.dart'; 
 
 class ApiService {
-  // Configuration de l'URL de base
-  // Pour Android Emulator : 10.0.2.2
-  // Pour appareil physique : Votre IP locale (ex: 192.168.1.10)
-  static const String baseUrl = 'http://localhost:8000';
+  // Utiliser ApiConfig au lieu de hardcoder l'URL
+  String get baseUrl => ApiConfig.baseUrl;
   
   // Headers par défaut
   Map<String, String> _getHeaders({String? token}) {
