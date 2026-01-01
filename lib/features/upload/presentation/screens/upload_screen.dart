@@ -28,7 +28,7 @@ class _UploadScreenState extends State<UploadScreen> {
   // API URL
   static const String baseUrl = kIsWeb 
       ? 'http://localhost:8000'
-      : 'http://10.0.2.2:8000';
+      : 'http://192.168.11.107:8000'; // CHANGE THIS IP!
 
   Future<void> _pickImage(ImageSource source) async {
     try {
@@ -67,7 +67,7 @@ class _UploadScreenState extends State<UploadScreen> {
                 children: [
                   Icon(Icons.check_circle, color: AppTheme.accentCream),
                   const SizedBox(width: 12),
-                  const Text('Image selected successfully'),
+                  const Text('Image selected ! Classifying...'),
                 ],
               ),
               backgroundColor: AppTheme.accentGold.withOpacity(0.9),
@@ -75,8 +75,10 @@ class _UploadScreenState extends State<UploadScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
+              duration: const Duration(seconds: 2),
             ),
           );
+          await _classifyRoom();
         }
       }
     } catch (e) {
@@ -740,7 +742,7 @@ class _UploadScreenState extends State<UploadScreen> {
                                 ),
                                 const SizedBox(width: 16),
                                 Text(
-                                  'Classify Room with AI',
+                                  'Generate Design',
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 18,

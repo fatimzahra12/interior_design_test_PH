@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../widgets/style_card.dart';
 import '../providers/style_providers.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../upload/presentation/screens/upload_screen.dart';
 
 class StyleSelectionScreen extends ConsumerStatefulWidget {
   const StyleSelectionScreen({super.key});
@@ -206,10 +207,12 @@ class _StyleSelectionScreenState extends ConsumerState<StyleSelectionScreen> {
                   onPressed: selectedStyle != null
                       ? () {
                           // Navigate to upload screen
-                          Navigator.pushNamed(
+                          Navigator.push(
                             context,
-                            '/upload',
-                            arguments: selectedStyle,
+                            MaterialPageRoute(
+                              builder: (context) => const UploadScreen(),
+                            ),
+                            
                           );
                         }
                       : null,
