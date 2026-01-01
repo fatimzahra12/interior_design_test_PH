@@ -251,6 +251,25 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
     setState(() => _isLoading = false);
   }
 }
+Future<void> _saveDesign(String originalPath, String generatedPath) async {
+  final prefs = await SharedPreferences.getInstance();
+  final token = prefs.getString('auth_token');
+
+  await http.post(
+    Uri.parse('${ApiConfig.baseUrl}/history/save'),
+    headers: {
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    },
+    body: json.encode({
+      'original_image_path': originalPath,
+      'generated_image_path': generatedPath,
+      'room_type': roomType,
+      'style': selectedStyle,
+      'confidence': confidence,
+    }),
+  );
+}
 
   void _showErrorSnackBar(String message) {
     if (!mounted) return;

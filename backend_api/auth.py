@@ -3,7 +3,12 @@ from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi import HTTPException, status
+from fastapi import Depends, HTTPException, status  # ← Ajouter Depends
 from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy.orm import Session
+import database
+import crud
 import os
 
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production-2024")
@@ -54,6 +59,22 @@ def get_password_hash(password: str) -> str:
             status_code=500,
             detail=f"Erreur lors du hachage du mot de passe: {str(e)}"
         )
+    
+def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(database.get_db)
+):
+    """Récupère l'utilisateur actuellement connecté depuis le token"""
+    email = verify_token(token)
+    user = crud.get_user_by_email(db, email=email)
+    
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Utilisateur non trouvé"
+        )
+    
+    return user
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """Crée un token JWT"""

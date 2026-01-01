@@ -10,6 +10,10 @@ import io
 import os
 import models, schemas, crud, auth, database
 from routers import profile
+from routers import history
+from pathlib import Path
+import shutil
+
 
 # Créer les tables
 models.Base.metadata.create_all(bind=database.engine)
@@ -20,6 +24,7 @@ app = FastAPI(
     version="1.0.0"
 )
 app.include_router(profile.router)
+app.include_router(history.router)
 # Configuration CORS pour Flutter
 app.add_middleware(
     CORSMiddleware,
@@ -196,25 +201,65 @@ async def transform_room(
     file: UploadFile = File(...),
     style: str = Form(...),
     room_type: str = Form(...),
-    token: str = Depends(auth.oauth2_scheme)
+    token: str = Depends(auth.oauth2_scheme),
+    db: Session = Depends(database.get_db)  # ← AJOUTER db
 ):
     """Transformer une pièce avec le style demandé"""
-    # Vérifier le token
-    email = auth.verify_token(token)
     
-    # Lire l'image
+    # Vérifier le token et récupérer l'utilisateur
+    email = auth.verify_token(token)
+    current_user = crud.get_user_by_email(db, email=email)
+    
+    if not current_user:
+        raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
+    
+    # Créer le dossier pour sauvegarder les images
+    uploads_dir = Path("uploads/designs")
+    uploads_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Sauvegarder l'image originale
+    timestamp = int(datetime.utcnow().timestamp())
+    original_filename = f"original_{current_user.id}_{timestamp}.jpg"
+    original_path = uploads_dir / original_filename
+    
+    # Lire et sauvegarder l'image
     image_data = await file.read()
+    with original_path.open("wb") as f:
+        f.write(image_data)
     
     # TODO: Intégrer votre modèle de transformation Stable Diffusion ici
-    # Pour l'instant, retourner les informations de la requête
+    # Pour l'instant, on copie l'image originale comme "image générée"
+    generated_filename = f"generated_{current_user.id}_{timestamp}.jpg"
+    generated_path = uploads_dir / generated_filename
+    
+    # Temporaire : copier l'image originale
+    import shutil
+    shutil.copy(str(original_path), str(generated_path))
+    
+    # SAUVEGARDER DANS L'HISTORIQUE
+    new_design = models.DesignHistory(
+        user_id=current_user.id,
+        original_image_path=str(original_path),
+        generated_image_path=str(generated_path),
+        room_type=room_type,
+        style=style,
+        confidence=None,  # Sera rempli après classification
+        is_favorite=False
+    )
+    
+    db.add(new_design)
+    db.commit()
+    db.refresh(new_design)
     
     return {
         "success": True,
-        "message": "Transformation AI en cours de développement",
+        "message": "Design créé et sauvegardé",
+        "design_id": new_design.id,
         "user_email": email,
         "style": style,
         "room_type": room_type,
-        "image_size": len(image_data)
+        "original_image": str(original_path),
+        "generated_image": str(generated_path)
     }
 
 # ============= ENDPOINTS D'INFORMATION =============

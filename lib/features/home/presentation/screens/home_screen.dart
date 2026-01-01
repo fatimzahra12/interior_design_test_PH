@@ -7,7 +7,7 @@ import '../../../upload/presentation/screens/upload_screen.dart';
 import '../../../auth/presentation/screens/login_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -223,7 +223,19 @@ class HomeScreen extends ConsumerWidget {
                 ),
                 
                 const SizedBox(height: 48),
-                
+                IconButton(
+                    icon: Icon(Icons.person),
+                    onPressed: () {
+                    Navigator.pushNamed(context, '/profile');
+                  },
+                ),
+                IconButton(
+                  icon: Icon(Icons.history),
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/history');
+                  },
+                ),
+
                 // Design Inspirations Section
                 Container(
                   padding: const EdgeInsets.all(24),
