@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
@@ -6,29 +7,33 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../../../../core/theme/app_theme.dart';
+import 'package:interior_design/features/home/presentation/providers/style_providers.dart';
 
-class UploadScreen extends StatefulWidget {
-  const UploadScreen({super.key});
+class UploadScreen extends ConsumerStatefulWidget {
+  const UploadScreen({Key? key}) : super(key: key);
 
   @override
-  State<UploadScreen> createState() => _UploadScreenState();
+  ConsumerState<UploadScreen> createState() => _UploadScreenState();
 }
 
-class _UploadScreenState extends State<UploadScreen> {
+class _UploadScreenState extends ConsumerState<UploadScreen> {
   dynamic _imageFile;
   Uint8List? _webImage;
   String? _imagePath;
   final ImagePicker _picker = ImagePicker();
   bool _isLoading = false;
-  
+
   // Classification results
   String? _roomType;
   double? _confidence;
 
+  // Generated design
+  Uint8List? _generatedDesign;
+
   // API URL
-  static const String baseUrl = kIsWeb 
-      ? 'http://localhost:8000'
-      : 'http://192.168.11.107:8000'; // CHANGE THIS IP!
+  static const String baseUrl = kIsWeb
+      ? 'http://localhost:8001'
+      : 'http://192.168.1.167:8001'; // CHANGE THIS IP!
 
   Future<void> _pickImage(ImageSource source) async {
     try {
@@ -36,8 +41,9 @@ class _UploadScreenState extends State<UploadScreen> {
         _isLoading = true;
         _roomType = null;
         _confidence = null;
+        _generatedDesign = null;
       });
-      
+
       final XFile? pickedFile = await _picker.pickImage(
         source: source,
         maxWidth: 1920,
@@ -59,7 +65,7 @@ class _UploadScreenState extends State<UploadScreen> {
             _imagePath = pickedFile.path;
           });
         }
-        
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -67,7 +73,7 @@ class _UploadScreenState extends State<UploadScreen> {
                 children: [
                   Icon(Icons.check_circle, color: AppTheme.accentCream),
                   const SizedBox(width: 12),
-                  const Text('Image selected ! Classifying...'),
+                  const Text('Image selected! Classifying...'),
                 ],
               ),
               backgroundColor: AppTheme.accentGold.withOpacity(0.9),
@@ -82,24 +88,7 @@ class _UploadScreenState extends State<UploadScreen> {
         }
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.error, color: AppTheme.accentCream),
-                const SizedBox(width: 12),
-                Expanded(child: Text('Error: ${e.toString()}')),
-              ],
-            ),
-            backgroundColor: AppTheme.errorRed.withOpacity(0.9),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-          ),
-        );
-      }
+      _showErrorSnackBar('Error: ${e.toString()}');
     } finally {
       setState(() => _isLoading = false);
     }
@@ -107,47 +96,22 @@ class _UploadScreenState extends State<UploadScreen> {
 
   Future<void> _classifyRoom() async {
     if (_imageFile == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.warning, color: AppTheme.accentCream),
-              const SizedBox(width: 12),
-              const Text('Please select an image first'),
-            ],
-          ),
-          backgroundColor: Colors.orange.shade700,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-      );
+      _showWarningSnackBar('Please select an image first');
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      var request = http.MultipartRequest(
-        'POST',
-        Uri.parse('$baseUrl/predict'),
-      );
+      var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/predict'));
 
       if (kIsWeb && _webImage != null) {
         request.files.add(
-          http.MultipartFile.fromBytes(
-            'file',
-            _webImage!,
-            filename: 'image.jpg',
-          ),
+          http.MultipartFile.fromBytes('file', _webImage!, filename: 'image.jpg'),
         );
       } else if (_imageFile != null) {
         request.files.add(
-          await http.MultipartFile.fromPath(
-            'file',
-            (_imageFile as File).path,
-          ),
+          await http.MultipartFile.fromPath('file', (_imageFile as File).path),
         );
       }
 
@@ -156,56 +120,16 @@ class _UploadScreenState extends State<UploadScreen> {
 
       if (response.statusCode == 200) {
         final result = json.decode(response.body);
-        
         setState(() {
           _roomType = result['class'];
           _confidence = result['confidence'];
         });
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  Icon(Icons.check_circle, color: AppTheme.accentCream),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Classification completed: ${_roomType!.toUpperCase()}'
-                    ),
-                  ),
-                ],
-              ),
-              backgroundColor: AppTheme.successGreen.withOpacity(0.9),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-          );
-        }
+        _showSuccessSnackBar('Classification completed: ${_roomType!.toUpperCase()}');
       } else {
         throw Exception('API Error: ${response.statusCode}');
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.error, color: AppTheme.accentCream),
-                const SizedBox(width: 12),
-                Expanded(child: Text('Classification error: ${e.toString()}')),
-              ],
-            ),
-            backgroundColor: AppTheme.errorRed.withOpacity(0.9),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-          ),
-        );
-      }
+      _showErrorSnackBar('Classification error: ${e.toString()}');
       setState(() {
         _roomType = null;
         _confidence = null;
@@ -215,293 +139,105 @@ class _UploadScreenState extends State<UploadScreen> {
     }
   }
 
-  Widget _buildImagePreview() {
-    if (_isLoading && _imageFile == null) {
-      return Container(
-        height: 320,
-        decoration: BoxDecoration(
-          color: AppTheme.secondaryDark.withOpacity(0.8),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: AppTheme.accentGold.withOpacity(0.3), width: 2),
-          boxShadow: AppTheme.glowShadow(),
-        ),
-        child: Center(
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation(AppTheme.accentGold),
-            strokeWidth: 3,
-          ),
-        ),
-      );
+  Future<void> _generateDesign() async {
+    final selectedStyle = ref.read(selectedStyleProvider);
+    if (_imageFile == null) {
+      _showWarningSnackBar('Please select an image first');
+      return;
+    }
+    if (selectedStyle == null) {
+      _showWarningSnackBar('Please select a style first');
+      return;
     }
 
-    if (_webImage != null) {
-      return Container(
-        height: 320,
-        decoration: BoxDecoration(
-          color: AppTheme.secondaryDark.withOpacity(0.8),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: AppTheme.accentGold.withOpacity(0.3), width: 2),
-          boxShadow: AppTheme.glowShadow(),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: Image.memory(
-            _webImage!,
-            fit: BoxFit.cover,
-            width: double.infinity,
-          ),
-        ),
-      );
-    } else if (_imageFile != null && !kIsWeb) {
-      return Container(
-        height: 320,
-        decoration: BoxDecoration(
-          color: AppTheme.secondaryDark.withOpacity(0.8),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: AppTheme.accentGold.withOpacity(0.3), width: 2),
-          boxShadow: AppTheme.glowShadow(),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: Image.file(
-            _imageFile as File,
-            fit: BoxFit.cover,
-            width: double.infinity,
-          ),
-        ),
-      );
-    }
+    setState(() {
+      _isLoading = true;
+      _generatedDesign = null;
+    });
 
-    return Container(
-      height: 320,
-      decoration: BoxDecoration(
-        color: AppTheme.secondaryDark.withOpacity(0.8),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: AppTheme.accentGold.withOpacity(0.3),
-          width: 2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+    try {
+      var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/generate'));
+      request.fields['style'] = selectedStyle; // send style
+      if (kIsWeb && _webImage != null) {
+        request.files.add(
+          http.MultipartFile.fromBytes('file', _webImage!, filename: 'image.jpg'),
+        );
+      } else if (_imageFile != null) {
+        request.files.add(
+          await http.MultipartFile.fromPath('file', (_imageFile as File).path),
+        );
+      }
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        final result = json.decode(response.body);
+        final base64Image = result['generated_image'] as String;
+        setState(() {
+          _generatedDesign = base64Decode(base64Image);
+        });
+        _showSuccessSnackBar('Design generated successfully!');
+      } else {
+        throw Exception('API Error: ${response.statusCode}');
+      }
+    } catch (e) {
+      _showErrorSnackBar('Design generation error: ${e.toString()}');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  void _showErrorSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                gradient: AppTheme.primaryGradient,
-                shape: BoxShape.circle,
-                boxShadow: AppTheme.glowShadow(),
-              ),
-              child: const Icon(
-                Icons.add_photo_alternate_outlined,
-                size: 64,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'No Image Selected',
-              style: TextStyle(
-                color: AppTheme.textLight.withOpacity(0.9),
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'PlayfairDisplay',
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Upload a room photo to classify',
-              style: TextStyle(
-                color: AppTheme.textMuted,
-                fontSize: 16,
-                fontFamily: 'Inter',
-              ),
-            ),
+            Icon(Icons.error, color: AppTheme.accentCream),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
           ],
         ),
+        backgroundColor: AppTheme.errorRed.withOpacity(0.9),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     );
   }
 
-  Widget _buildResultCard() {
-    if (_roomType == null || _confidence == null) {
-      return const SizedBox.shrink();
-    }
-
-    final confidencePercent = (_confidence! * 100).toStringAsFixed(1);
-    final isHighConfidence = _confidence! >= 0.8;
-
-    return Container(
-      margin: const EdgeInsets.only(top: 24),
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppTheme.accentGold.withOpacity(0.2),
-            AppTheme.accentWarm.withOpacity(0.1),
+  void _showSuccessSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.check_circle, color: AppTheme.accentCream),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
           ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: isHighConfidence ? AppTheme.accentGold : AppTheme.accentWarm,
-          width: 2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: (isHighConfidence ? AppTheme.accentGold : AppTheme.accentWarm).withOpacity(0.3),
-            blurRadius: 25,
-            offset: const Offset(0, 10),
-          ),
-        ],
+        backgroundColor: AppTheme.successGreen.withOpacity(0.9),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: AppTheme.primaryGradient,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: AppTheme.glowShadow(),
-                ),
-                child: const Icon(
-                  Icons.meeting_room_rounded,
-                  color: Colors.white,
-                  size: 32,
-                ),
-              ),
-              const SizedBox(width: 20),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Classification Result',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AppTheme.textLight.withOpacity(0.8),
-                        fontWeight: FontWeight.w500,
-                        fontFamily: 'Inter',
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _roomType!.toUpperCase(),
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w800,
-                        color: AppTheme.textLight,
-                        fontFamily: 'PlayfairDisplay',
-                        letterSpacing: 1,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: AppTheme.secondaryDark.withOpacity(0.6),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: (isHighConfidence ? AppTheme.accentGold : AppTheme.accentWarm).withOpacity(0.3),
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: isHighConfidence 
-                        ? AppTheme.accentGold.withOpacity(0.2) 
-                        : AppTheme.accentWarm.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Icon(
-                    isHighConfidence ? Icons.verified : Icons.info_outline,
-                    color: isHighConfidence ? AppTheme.accentGold : AppTheme.accentWarm,
-                    size: 28,
-                  ),
-                ),
-                const SizedBox(width: 20),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Confidence Level',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: AppTheme.textLight.withOpacity(0.7),
-                          fontWeight: FontWeight.w500,
-                          fontFamily: 'Inter',
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Text(
-                            '$confidencePercent%',
-                            style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.w800,
-                              color: isHighConfidence ? AppTheme.accentGold : AppTheme.accentWarm,
-                              fontFamily: 'PlayfairDisplay',
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: (isHighConfidence 
-                                  ? AppTheme.accentGold 
-                                  : AppTheme.accentWarm).withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: (isHighConfidence 
-                                    ? AppTheme.accentGold 
-                                    : AppTheme.accentWarm).withOpacity(0.5),
-                              ),
-                            ),
-                            child: Text(
-                              isHighConfidence ? 'HIGH' : 'MEDIUM',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: isHighConfidence ? AppTheme.accentGold : AppTheme.accentWarm,
-                                fontFamily: 'Inter',
-                                letterSpacing: 1,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+    );
+  }
+
+  void _showWarningSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.warning, color: AppTheme.accentCream),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: Colors.orange.shade700,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
     );
   }
@@ -515,7 +251,7 @@ class _UploadScreenState extends State<UploadScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(
-          'Room Classification',
+          'Room Classification & Design',
           style: TextStyle(
             color: AppTheme.accentCream,
             fontWeight: FontWeight.w700,
@@ -544,271 +280,91 @@ class _UploadScreenState extends State<UploadScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 80),
-                
-                // Header Section
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: AppTheme.secondaryDark.withOpacity(0.5),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: AppTheme.accentGold.withOpacity(0.2),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Upload Room Image',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w800,
-                          color: AppTheme.accentCream,
-                          fontFamily: 'PlayfairDisplay',
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Upload a photo of any room and our AI will classify it',
-                        style: TextStyle(
-                          color: AppTheme.textMuted,
-                          fontSize: 16,
-                          fontFamily: 'Inter',
-                          height: 1.5,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        height: 3,
-                        width: 80,
-                        decoration: BoxDecoration(
-                          gradient: AppTheme.primaryGradient,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                const SizedBox(height: 32),
-                
-                // Image Preview
                 _buildImagePreview(),
-                
                 const SizedBox(height: 32),
-                
-                // Camera Button
-                MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: Container(
-                    height: 60,
+
+                // Buttons Row
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _isLoading ? null : () => _pickImage(ImageSource.camera),
+                        icon: const Icon(Icons.camera_alt_rounded),
+                        label: const Text('Camera'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.accentGold,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _isLoading ? null : () => _pickImage(ImageSource.gallery),
+                        icon: const Icon(Icons.photo_library_rounded),
+                        label: const Text('Gallery'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryGradient.colors.first,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 24),
+                _buildResultCard(),
+
+                // Generate Design Button
+                const SizedBox(height: 32),
+                ElevatedButton(
+                  onPressed: (_imageFile != null && !_isLoading) ? _generateDesign : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: (_imageFile != null && !_isLoading)
+                        ? AppTheme.accentGold
+                        : AppTheme.secondaryDark,
+                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 28,
+                          width: 28,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 3,
+                            valueColor: AlwaysStoppedAnimation(Colors.white),
+                          ),
+                        )
+                      : const Text(
+                          'Generate Design',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                ),
+
+                const SizedBox(height: 32),
+
+                // Generated Design Preview
+                if (_generatedDesign != null)
+                  Container(
+                    height: 320,
                     decoration: BoxDecoration(
                       color: AppTheme.secondaryDark.withOpacity(0.8),
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(
-                        color: AppTheme.accentGold.withOpacity(0.3),
-                        width: 2,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 15,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: AppTheme.accentGold.withOpacity(0.3), width: 2),
                     ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: _isLoading ? null : () => _pickImage(ImageSource.camera),
-                        borderRadius: BorderRadius.circular(16),
-                        child: Center(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.camera_alt_rounded,
-                                color: AppTheme.accentGold,
-                                size: 24,
-                              ),
-                              const SizedBox(width: 16),
-                              Text(
-                                'Take Photo',
-                                style: TextStyle(
-                                  color: AppTheme.textLight,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  fontFamily: 'Inter',
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                
-                const SizedBox(height: 16),
-                
-                // Gallery Button
-                MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: Container(
-                    height: 60,
-                    decoration: BoxDecoration(
-                      gradient: AppTheme.primaryGradient,
-                      borderRadius: BorderRadius.circular(18),
-                      boxShadow: AppTheme.glowShadow(),
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: _isLoading ? null : () => _pickImage(ImageSource.gallery),
-                        borderRadius: BorderRadius.circular(16),
-                        child: Center(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.photo_library_rounded,
-                                color: Colors.white,
-                                size: 24,
-                              ),
-                              const SizedBox(width: 16),
-                              Text(
-                                'Choose from Gallery',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  fontFamily: 'Inter',
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                
-                // Result Card
-                _buildResultCard(),
-                
-                const SizedBox(height: 32),
-                
-                // Classify Button
-                MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: Container(
-                    height: 64,
-                    decoration: BoxDecoration(
+                    child: ClipRRect(
                       borderRadius: BorderRadius.circular(20),
-                      boxShadow: (_imageFile != null && !_isLoading)
-                          ? AppTheme.glowShadow()
-                          : null,
-                    ),
-                    child: ElevatedButton(
-                      onPressed: (_isLoading || _imageFile == null) 
-                          ? null 
-                          : _classifyRoom,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: (_imageFile == null || _isLoading)
-                            ? AppTheme.secondaryDark
-                            : AppTheme.accentGold,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 20),
+                      child: Image.memory(
+                        _generatedDesign!,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
                       ),
-                      child: _isLoading
-                          ? const SizedBox(
-                              height: 28,
-                              width: 28,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 3,
-                                valueColor: AlwaysStoppedAnimation(Colors.white),
-                              ),
-                            )
-                          : Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.psychology_rounded,
-                                  color: Colors.white,
-                                  size: 28,
-                                ),
-                                const SizedBox(width: 16),
-                                Text(
-                                  'Generate Design',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w700,
-                                    fontFamily: 'Inter',
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                              ],
-                            ),
                     ),
                   ),
-                ),
-                
-                const SizedBox(height: 40),
-                
-                // Tips Section
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: AppTheme.secondaryDark.withOpacity(0.5),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: AppTheme.accentGold.withOpacity(0.2),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              gradient: AppTheme.primaryGradient,
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: AppTheme.glowShadow(),
-                            ),
-                            child: const Icon(
-                              Icons.tips_and_updates_rounded,
-                              color: Colors.white,
-                              size: 24,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Text(
-                            'Tips for Best Results',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                              color: AppTheme.accentCream,
-                              fontFamily: 'PlayfairDisplay',
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      _buildTipItem(Icons.wb_sunny_outlined, 'Take photos in good lighting'),
-                      _buildTipItem(Icons.crop_free_rounded, 'Capture the entire room clearly'),
-                      _buildTipItem(Icons.door_front_door_outlined, 'Include doors and windows'),
-                      _buildTipItem(Icons.weekend_outlined, 'Keep furniture visible but not cluttered'),
-                    ],
-                  ),
-                ),
-                
-                const SizedBox(height: 60),
               ],
             ),
           ),
@@ -817,38 +373,48 @@ class _UploadScreenState extends State<UploadScreen> {
     );
   }
 
-  Widget _buildTipItem(IconData icon, String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 18),
-      child: Row(
+  Widget _buildImagePreview() {
+    if (_isLoading && _imageFile == null) {
+      return Center(child: CircularProgressIndicator(color: AppTheme.accentGold));
+    }
+
+    if (_webImage != null) {
+      return Image.memory(_webImage!, height: 320, fit: BoxFit.cover);
+    } else if (_imageFile != null && !kIsWeb) {
+      return Image.file(_imageFile as File, height: 320, fit: BoxFit.cover);
+    }
+
+    return Container(
+      height: 320,
+      decoration: BoxDecoration(
+        color: AppTheme.secondaryDark.withOpacity(0.8),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppTheme.accentGold.withOpacity(0.3), width: 2),
+      ),
+      child: const Center(child: Icon(Icons.add_photo_alternate_outlined, size: 64, color: Colors.white)),
+    );
+  }
+
+  Widget _buildResultCard() {
+    if (_roomType == null || _confidence == null) return const SizedBox.shrink();
+
+    final confidencePercent = (_confidence! * 100).toStringAsFixed(1);
+
+    return Container(
+      margin: const EdgeInsets.only(top: 24),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppTheme.accentGold.withOpacity(0.2), AppTheme.accentWarm.withOpacity(0.1)],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppTheme.accentGold, width: 2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: AppTheme.accentGold.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: AppTheme.accentGold.withOpacity(0.3),
-              ),
-            ),
-            child: Icon(
-              icon,
-              size: 22,
-              color: AppTheme.accentGold,
-            ),
-          ),
-          const SizedBox(width: 18),
-          Expanded(
-            child: Text(
-              text,
-              style: TextStyle(
-                color: AppTheme.textLight.withOpacity(0.9),
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                fontFamily: 'Inter',
-              ),
-            ),
-          ),
+          Text('Room Type: $_roomType'),
+          Text('Confidence: $confidencePercent%'),
         ],
       ),
     );
