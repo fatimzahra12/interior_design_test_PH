@@ -5,6 +5,8 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
+import 'package:interior_design/core/config/api_config.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../../../../core/theme/app_theme.dart';
 import 'package:interior_design/features/home/presentation/providers/style_providers.dart';
@@ -33,7 +35,7 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
   // API URL
   static const String baseUrl = kIsWeb
       ? 'http://localhost:8000'
-      : 'http://192.168.1.167:8000'; // CHANGE THIS IP!
+      : 'http://192.168.1.167:8000';
 
   Future<void> _pickImage(ImageSource source) async {
     try {
@@ -251,25 +253,36 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
     setState(() => _isLoading = false);
   }
 }
-Future<void> _saveDesign(String originalPath, String generatedPath) async {
-  final prefs = await SharedPreferences.getInstance();
-  final token = prefs.getString('auth_token');
+  Future<void> _saveDesign(String originalPath, String generatedPath) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('auth_token');
+    final selectedStyle = ref.read(selectedStyleProvider);
 
-  await http.post(
-    Uri.parse('${ApiConfig.baseUrl}/history/save'),
-    headers: {
-      'Authorization': 'Bearer $token',
-      'Content-Type': 'application/json',
-    },
-    body: json.encode({
-      'original_image_path': originalPath,
-      'generated_image_path': generatedPath,
-      'room_type': roomType,
-      'style': selectedStyle,
-      'confidence': confidence,
-    }),
-  );
-}
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/history/save'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({
+          'original_image_path': originalPath,
+          'generated_image_path': generatedPath,
+          'room_type': _roomType,
+          'style': selectedStyle,
+          'confidence': _confidence?.toString(),
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        _showSuccessSnackBar('Design saved to history!');
+      } else {
+        throw Exception('Failed to save design: ${response.statusCode}');
+      }
+    } catch (e) {
+      _showErrorSnackBar('Error saving design: $e');
+    }
+  }
 
   void _showErrorSnackBar(String message) {
     if (!mounted) return;
@@ -430,24 +443,9 @@ Future<void> _saveDesign(String originalPath, String generatedPath) async {
 
                 const SizedBox(height: 32),
 
-                // Generated Design Preview
-                if (_generatedDesign != null)
-                  Container(
-                    height: 320,
-                    decoration: BoxDecoration(
-                      color: AppTheme.secondaryDark.withOpacity(0.8),
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: AppTheme.accentGold.withOpacity(0.3), width: 2),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(20),
-                      child: Image.memory(
-                        _generatedDesign!,
-                        fit: BoxFit.cover,
-                        width: double.infinity,
-                      ),
-                    ),
-                  ),
+                // Before/After Comparison
+                if (_generatedDesign != null && _imageFile != null)
+                  _buildBeforeAfterComparison(),
               ],
             ),
           ),
@@ -498,6 +496,139 @@ Future<void> _saveDesign(String originalPath, String generatedPath) async {
         children: [
           Text('Room Type: $_roomType'),
           Text('Confidence: $confidencePercent%'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBeforeAfterComparison() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.secondaryDark.withOpacity(0.8),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppTheme.accentGold.withOpacity(0.3), width: 2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [AppTheme.accentGold.withOpacity(0.3), AppTheme.accentWarm.withOpacity(0.2)],
+              ),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(24),
+                topRight: Radius.circular(24),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.compare_arrows, color: AppTheme.accentCream, size: 24),
+                const SizedBox(width: 12),
+                Text(
+                  'Before & After',
+                  style: TextStyle(
+                    color: AppTheme.accentCream,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'PlayfairDisplay',
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Images Row
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                // Before Image
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryDark.withOpacity(0.7),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppTheme.accentCream.withOpacity(0.3)),
+                        ),
+                        child: Text(
+                          'BEFORE',
+                          style: TextStyle(
+                            color: AppTheme.accentCream,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                      ),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: kIsWeb && _webImage != null
+                            ? Image.memory(
+                                _webImage!,
+                                height: 280,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                              )
+                            : Image.file(
+                                _imageFile as File,
+                                height: 280,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                              ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(width: 16),
+
+                // After Image
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppTheme.accentGold.withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppTheme.accentGold.withOpacity(0.5)),
+                        ),
+                        child: Text(
+                          'AFTER',
+                          style: TextStyle(
+                            color: AppTheme.accentCream,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                      ),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Image.memory(
+                          _generatedDesign!,
+                          height: 280,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

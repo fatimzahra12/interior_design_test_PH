@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
 import 'features/home/presentation/screens/home_screen.dart';
+import 'features/profile/presentation/screens/profile_screen.dart';
+import 'features/home/history/presentation/screens/history_screen.dart';
 import 'core/providers/auth_provider.dart';
 
 void main() {
@@ -30,6 +32,8 @@ class MyApp extends ConsumerWidget {
       routes: {
         '/home': (context) => const HomeScreen(),
         '/login': (context) => const LoginScreen(),
+        '/profile': (context) => const ProfileScreen(),
+        '/history': (context) => const HistoryScreen(),
       },
     );
   }
