@@ -16,43 +16,112 @@ class StyleSelectionScreen extends ConsumerStatefulWidget {
 class _StyleSelectionScreenState extends ConsumerState<StyleSelectionScreen> {
   // List of interior design styles with descriptions
   final List<Map<String, String>> styles = [
+    // 🎀 Soft & Girly Styles
     {
-      'title': 'Minimalist',
-      'description':
-          'Clean, simple, clutter-free spaces with focus on essentials',
-      'image':
-          'https://plus.unsplash.com/premium_photo-1670358808227-590942cd18cb?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8bWluaW1hbGlzdCUyMHJvb218ZW58MHx8MHx8fDA%3D',
+      'title': 'Soft Girly',
+      'description': 'Pastel colors, blush pink, soft lighting, delicate decor',
+      'image': 'https://th.bing.com/th/id/R.993bd0c74f51959597e12fc0c5d539a4?rik=RoV4EjAyqMDJPQ&pid=ImgRaw&r=0',
     },
     {
-      'title': 'Cozy',
-      'description':
-          'Warm, comfortable, and inviting spaces with soft textures',
-      'image':
-          'https://images.unsplash.com/photo-1615873968403-89e068629265?w=600&auto=format&fit=crop',
+      'title': 'Coquette Style',
+      'description': 'Bows, lace details, vintage mirrors, romantic pink tones',
+      'image': 'https://images.squarespace-cdn.com/content/v1/63dde481bbabc6724d988548/8b268845-fd76-4508-b678-584ab97b626e/_d29167c0-7c63-4ad3-ad31-6ce3ef6e22fa.jpg',
     },
     {
-      'title': 'Modern',
-      'description': 'Sleek, contemporary design with geometric shapes',
-      'image':
-          'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w-600&auto=format&fit=crop',
+      'title': 'Princess Style',
+      'description': 'Elegant furniture, canopy bed, gold accents',
+      'image': 'https://th.bing.com/th/id/R.22c7e9801c0787512570632c7d293b02?rik=%2buDnzVsmp6hK4w&pid=ImgRaw&r=0',
     },
     {
-      'title': 'Industrial',
-      'description': 'Raw, edgy aesthetic with exposed elements and urban vibe',
-      'image':
-          'https://images.unsplash.com/photo-1495433324511-bf8e92934d90?w=600&auto=format&fit=crop',
+      'title': 'Korean Girly Minimal',
+      'description': 'Pastel beige, low furniture, cozy and clean',
+      'image': 'https://th.bing.com/th/id/R.42368189bb773eb7ab5c388b8fe2d170?rik=ffsWB8xKMsKPEg&pid=ImgRaw&r=0',
+    },
+    {
+      'title': 'Barbiecore',
+      'description': 'Bold pinks, playful furniture, glossy finishes',
+      'image': 'https://tidymalism.com/wp-content/uploads/2023/06/barbie-dreamhouse-barbiecore-aesthetic-by-tidymalism-1024x574.jpeg.webp',
+    },
+    
+    // 🧸 Childish / Playful Styles
+    {
+      'title': 'Childish ',
+      'description': 'Bright colors, cartoon decor, soft textures',
+      'image': 'https://www.thespruce.com/thmb/BWd873UxZN4O0eqIX9pR8Mgi7JI=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc()/54.-Westport-Modern-Farmhouse-by-Chango--Co.---Playroom-f07d90f13aea4f6d94e82e705483cd9e.jpg',
+    },
+    {
+      'title': 'Cute Kawaii Style',
+      'description': 'Pastel colors, cute characters, rounded furniture',
+      'image': 'https://i.pinimg.com/originals/a9/f8/f5/a9f8f5abf28aafb4b622da3a02a4894f.jpg',
+    },
+    {
+      'title': 'Toyland Theme',
+      'description': 'Colorful shelves, toy-inspired decor, fun patterns',
+      'image': 'https://dreamvacationinteriors.com/wp-content/uploads/2020/09/2842-Storey-Lake-toy-story-4.jpg',
+    },
+    {
+      'title': 'Nursery Style',
+      'description': 'Soft colors, animal illustrations, cozy lighting',
+      'image': 'https://cdn.decorilla.com/online-decorating/wp-content/uploads/2019/03/nursery-interior-design-pink.jpg',
+    },
+    {
+      'title': 'Fantasy Kids Room',
+      'description': 'Stars, clouds, castles, magical elements',
+      'image': 'https://img.freepik.com/premium-photo/kids-treehouse-bedroom-fantasy-interior-design_942407-187.jpg',
+    },
+    
+    // 🌿 Calm & Cozy Styles
+    {
+      'title': 'Cozy Minimalist',
+      'description': 'Neutral colors, warm lights, simple furniture',
+      'image': 'https://mir-s3-cdn-cf.behance.net/project_modules/1400/f64356187459249.65897a385bc35.jpg',
     },
     {
       'title': 'Scandinavian',
-      'description': 'Light, natural, and functional with minimalist touch',
-      'image':
-          'https://images.unsplash.com/photo-1513694203232-719a280e022f?w=600&auto=format&fit=crop',
+      'description': 'White tones, wood textures, clean and cozy',
+      'image': 'https://images.unsplash.com/photo-1513694203232-719a280e022f?w=600&auto=format&fit=crop',
     },
     {
-      'title': 'Bohemian',
-      'description': 'Colorful, eclectic, and artistic with global influences',
-      'image':
-          'https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?w=600&auto=format&fit=crop',
+      'title': 'Japandi',
+      'description': 'Japanese + Scandinavian, calm, earthy, minimal',
+      'image': 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=600&auto=format&fit=crop',
+    },
+    {
+      'title': 'Boho Chic',
+      'description': 'Natural materials, plants, warm colors',
+      'image': 'https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?w=600&auto=format&fit=crop',
+    },
+    {
+      'title': 'Soft Cottagecore',
+      'description': 'Floral patterns, vintage furniture, cozy vibes',
+      'image': 'https://images.unsplash.com/photo-1615873968403-89e068629265?w=600&auto=format&fit=crop',
+    },
+    
+    // 🎨 Creative & Aesthetic Styles
+    {
+      'title': 'Artistic Studio',
+      'description': 'Creative decor, paintings, expressive colors',
+      'image': 'https://images.unsplash.com/photo-1495433324511-bf8e92934d90?w=600&auto=format&fit=crop',
+    },
+    {
+      'title': 'Modern Aesthetic',
+      'description': 'Clean lines, neutral colors, Instagram-style',
+      'image': 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=600&auto=format&fit=crop',
+    },
+    {
+      'title': 'Vintage Pastel',
+      'description': 'Retro furniture, pastel tones, soft lighting',
+      'image': 'https://images.unsplash.com/photo-1616594039964-ae9021a400a0?w=600&auto=format&fit=crop',
+    },
+    {
+      'title': 'Dreamcore',
+      'description': 'Surreal elements, soft glows, dreamy atmosphere',
+      'image': 'https://images.unsplash.com/photo-1631889993959-41b4e9c6e3c5?w=600&auto=format&fit=crop',
+    },
+    {
+      'title': 'Fairycore',
+      'description': 'Nature-inspired, fairy lights, magical soft colors',
+      'image': 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=600&auto=format&fit=crop',
     },
   ];
 

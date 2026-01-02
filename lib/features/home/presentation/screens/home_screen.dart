@@ -30,6 +30,51 @@ class HomeScreen extends ConsumerWidget {
         ),
         centerTitle: true,
         actions: [
+          // Profile Button
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: AppTheme.accentGold.withOpacity(0.3),
+                width: 1.5,
+              ),
+            ),
+            child: IconButton(
+              icon: Icon(
+                Icons.person,
+                color: AppTheme.accentCream,
+                size: 22,
+              ),
+              onPressed: () {
+                Navigator.pushNamed(context, '/profile');
+              },
+              tooltip: 'Profile',
+            ),
+          ),
+          // History Button
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: AppTheme.accentGold.withOpacity(0.3),
+                width: 1.5,
+              ),
+            ),
+            child: IconButton(
+              icon: Icon(
+                Icons.history,
+                color: AppTheme.accentCream,
+                size: 22,
+              ),
+              onPressed: () {
+                Navigator.pushNamed(context, '/history');
+              },
+              tooltip: 'History',
+            ),
+          ),
+          // Logout Button
           Container(
             margin: const EdgeInsets.only(right: 16),
             decoration: BoxDecoration(
@@ -223,19 +268,7 @@ class HomeScreen extends ConsumerWidget {
                 ),
                 
                 const SizedBox(height: 48),
-                IconButton(
-                    icon: Icon(Icons.person),
-                    onPressed: () {
-                    Navigator.pushNamed(context, '/profile');
-                  },
-                ),
-                IconButton(
-                  icon: Icon(Icons.history),
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/history');
-                  },
-                ),
-
+                
                 // Design Inspirations Section
                 Container(
                   padding: const EdgeInsets.all(24),

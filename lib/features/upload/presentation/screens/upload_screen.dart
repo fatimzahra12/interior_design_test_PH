@@ -489,9 +489,9 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
 
                 const SizedBox(height: 32),
 
-                // Before/After Comparison
-                if (_generatedDesign != null && _imageFile != null)
-                  _buildBeforeAfterComparison(),
+                // Generated Design Result
+                if (_generatedDesign != null)
+                  _buildGeneratedDesign(),
               ],
             ),
           ),
@@ -547,7 +547,7 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
     );
   }
 
-  Widget _buildBeforeAfterComparison() {
+  Widget _buildGeneratedDesign() {
     return Container(
       decoration: BoxDecoration(
         color: AppTheme.secondaryDark.withOpacity(0.8),
@@ -572,10 +572,10 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.compare_arrows, color: AppTheme.accentCream, size: 24),
+                Icon(Icons.auto_awesome, color: AppTheme.accentCream, size: 24),
                 const SizedBox(width: 12),
                 Text(
-                  'Before & After',
+                  'Generated Design',
                   style: TextStyle(
                     color: AppTheme.accentCream,
                     fontSize: 20,
@@ -587,92 +587,17 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
             ),
           ),
 
-          // Images Row
+          // Generated Image
           Padding(
             padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                // Before Image
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryDark.withOpacity(0.7),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppTheme.accentCream.withOpacity(0.3)),
-                        ),
-                        child: Text(
-                          'BEFORE',
-                          style: TextStyle(
-                            color: AppTheme.accentCream,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 1.2,
-                          ),
-                        ),
-                      ),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: kIsWeb && _webImage != null
-                            ? Image.memory(
-                                _webImage!,
-                                height: 280,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                              )
-                            : Image.file(
-                                _imageFile as File,
-                                height: 280,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                              ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(width: 16),
-
-                // After Image
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: AppTheme.accentGold.withOpacity(0.3),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppTheme.accentGold.withOpacity(0.5)),
-                        ),
-                        child: Text(
-                          'AFTER',
-                          style: TextStyle(
-                            color: AppTheme.accentCream,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 1.2,
-                          ),
-                        ),
-                      ),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: Image.memory(
-                          _generatedDesign!,
-                          height: 280,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Image.memory(
+                _generatedDesign!,
+                height: 400,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
             ),
           ),
         ],
