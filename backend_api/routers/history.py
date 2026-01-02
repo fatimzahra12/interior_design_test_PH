@@ -1,11 +1,13 @@
 # backend_api/routers/history.py - NOUVEAU FICHIER
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
 import os
+from pathlib import Path
+import shutil
 
 from database import get_db
 from models import User, DesignHistory
@@ -88,32 +90,69 @@ async def get_design_by_id(
 # POST - Sauvegarder un nouveau design
 @router.post("/save")
 async def save_design(
-    design_data: SaveDesignRequest,
+    original_image: UploadFile = File(...),
+    generated_image: UploadFile = File(...),
+    room_type: Optional[str] = Form(None),
+    style: Optional[str] = Form(None),
+    confidence: Optional[str] = Form(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Sauvegarde un nouveau design dans l'historique"""
+    """Sauvegarde un nouveau design dans l'historique avec les images"""
     
-    new_design = DesignHistory(
-        user_id=current_user.id,
-        original_image_path=design_data.original_image_path,
-        generated_image_path=design_data.generated_image_path,
-        room_type=design_data.room_type,
-        style=design_data.style,
-        confidence=design_data.confidence,
-        is_favorite=False,
-        created_at=datetime.utcnow()
-    )
+    # Créer le dossier pour sauvegarder les images
+    uploads_dir = Path("uploads/designs")
+    uploads_dir.mkdir(parents=True, exist_ok=True)
     
-    db.add(new_design)
-    db.commit()
-    db.refresh(new_design)
+    # Générer des noms de fichiers uniques
+    timestamp = int(datetime.utcnow().timestamp())
+    original_filename = f"original_{current_user.id}_{timestamp}.jpg"
+    generated_filename = f"generated_{current_user.id}_{timestamp}.jpg"
     
-    return {
-        "message": "Design saved successfully",
-        "design_id": new_design.id,
-        "design": new_design
-    }
+    original_path = uploads_dir / original_filename
+    generated_path = uploads_dir / generated_filename
+    
+    try:
+        # Sauvegarder l'image originale
+        with original_path.open("wb") as buffer:
+            shutil.copyfileobj(original_image.file, buffer)
+        
+        # Sauvegarder l'image générée
+        with generated_path.open("wb") as buffer:
+            shutil.copyfileobj(generated_image.file, buffer)
+        
+        # Sauvegarder dans la base de données
+        # Normalize paths to use forward slashes for URL compatibility (Windows uses backslashes)
+        original_path_str = str(original_path).replace('\\', '/')
+        generated_path_str = str(generated_path).replace('\\', '/')
+        
+        new_design = DesignHistory(
+            user_id=current_user.id,
+            original_image_path=original_path_str,
+            generated_image_path=generated_path_str,
+            room_type=room_type,
+            style=style,
+            confidence=confidence,
+            is_favorite=False,
+            created_at=datetime.utcnow()
+        )
+        
+        db.add(new_design)
+        db.commit()
+        db.refresh(new_design)
+        
+        return {
+            "message": "Design saved successfully",
+            "design_id": new_design.id,
+            "design": new_design
+        }
+    except Exception as e:
+        # Nettoyer les fichiers en cas d'erreur
+        if original_path.exists():
+            os.remove(original_path)
+        if generated_path.exists():
+            os.remove(generated_path)
+        raise HTTPException(status_code=500, detail=f"Error saving design: {str(e)}")
 
 
 # PUT - Marquer/Démarquer comme favori

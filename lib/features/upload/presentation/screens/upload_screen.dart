@@ -244,6 +244,9 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
         _generatedDesign = bytes;
       });
       _showSuccessSnackBar('Design generated successfully!');
+      
+      // Save to history after successful generation
+      await _saveDesign();
     } else {
       throw Exception('API Error: ${streamedResponse.statusCode}');
     }
@@ -253,34 +256,77 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
     setState(() => _isLoading = false);
   }
 }
-  Future<void> _saveDesign(String originalPath, String generatedPath) async {
+
+  Future<void> _saveDesign() async {
+    if (_imageFile == null || _generatedDesign == null || _roomType == null) {
+      return; // Can't save without required data
+    }
+
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('auth_token');
     final selectedStyle = ref.read(selectedStyleProvider);
 
+    if (token == null) {
+      _showErrorSnackBar('Please login to save designs');
+      return;
+    }
+
     try {
-      final response = await http.post(
+      final request = http.MultipartRequest(
+        'POST',
         Uri.parse('${ApiConfig.baseUrl}/history/save'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: json.encode({
-          'original_image_path': originalPath,
-          'generated_image_path': generatedPath,
-          'room_type': _roomType,
-          'style': selectedStyle,
-          'confidence': _confidence?.toString(),
-        }),
       );
 
+      // Add authorization header
+      request.headers['Authorization'] = 'Bearer $token';
+
+      // Add form fields
+      request.fields['room_type'] = _roomType!;
+      if (selectedStyle != null) {
+        request.fields['style'] = selectedStyle;
+      }
+      if (_confidence != null) {
+        request.fields['confidence'] = _confidence!.toString();
+      }
+
+      // Add original image file
+      if (kIsWeb && _webImage != null) {
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'original_image',
+            _webImage!,
+            filename: 'original.jpg',
+          ),
+        );
+      } else if (_imageFile != null) {
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            'original_image',
+            (_imageFile as File).path,
+          ),
+        );
+      }
+
+      // Add generated image file
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'generated_image',
+          _generatedDesign!,
+          filename: 'generated.jpg',
+        ),
+      );
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
       if (response.statusCode == 200) {
-        _showSuccessSnackBar('Design saved to history!');
+        // Design saved successfully (message shown in success snackbar above)
       } else {
-        throw Exception('Failed to save design: ${response.statusCode}');
+        throw Exception('Failed to save design: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
-      _showErrorSnackBar('Error saving design: $e');
+      // Don't show error snackbar for save failures, just log
+      print('Error saving design to history: $e');
     }
   }
 

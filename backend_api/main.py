@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from datetime import timedelta
 import tensorflow as tf
@@ -25,6 +26,12 @@ app = FastAPI(
 )
 app.include_router(profile.router)
 app.include_router(history.router)
+
+# Mount static files for serving uploaded images
+uploads_dir = Path("uploads")
+uploads_dir.mkdir(exist_ok=True)
+app.mount("/static", StaticFiles(directory="uploads"), name="static")
+
 # Configuration CORS pour Flutter
 app.add_middleware(
     CORSMiddleware,

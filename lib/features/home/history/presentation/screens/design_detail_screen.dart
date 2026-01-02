@@ -289,8 +289,29 @@ class _DesignDetailScreenState extends State<DesignDetailScreen> {
       );
     }
 
+    // Normalize path separators (Windows uses backslashes, URLs need forward slashes)
+    String normalizedPath = path.replaceAll('\\', '/');
+    
+    // Extract relative path from stored path
+    // Path format in DB could be: "uploads/designs/image.jpg" or "uploads\designs\image.jpg" (Windows)
+    // Static mount: "/static" -> "uploads" directory
+    // So we need: "/static/designs/image.jpg" (strip "uploads/")
+    
+    // Remove "uploads/" prefix if present
+    if (normalizedPath.startsWith('uploads/')) {
+      normalizedPath = normalizedPath.substring(8); // Remove "uploads/"
+    }
+    
+    // Also handle absolute paths that might include "uploads" somewhere
+    final uploadsIndex = normalizedPath.indexOf('uploads/');
+    if (uploadsIndex != -1) {
+      normalizedPath = normalizedPath.substring(uploadsIndex + 8);
+    }
+    
+    final imageUrl = '${ApiConfig.baseUrl}/static/$normalizedPath';
+    
     return Image.network(
-      '${ApiConfig.baseUrl}/static/$path',
+      imageUrl,
       fit: BoxFit.cover,
       loadingBuilder: (context, child, loadingProgress) {
         if (loadingProgress == null) return child;
