@@ -186,7 +186,7 @@ class HomeScreen extends ConsumerWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const StyleSelectionScreen(),
+                          builder: (context) => StyleSelectionScreen(),
                         ),
                       );
                     },
